@@ -84,6 +84,10 @@ public class OverlayService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && "STOP".equals(intent.getAction())) {
+            stopSelf();
+            return START_NOT_STICKY;
+        }
         if (intent != null && intent.hasExtra("media_projection_data")) {
             int resultCode = intent.getIntExtra("media_projection_result_code", -1);
             Intent data = intent.getParcelableExtra("media_projection_data");
@@ -95,48 +99,61 @@ public class OverlayService extends Service {
     }
 
     private void startScreenCapture(int resultCode, Intent data) {
-        MediaProjectionManager mpm = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
-        mediaProjection = mpm.getMediaProjection(resultCode, data);
+        try {
+            MediaProjectionManager mpm = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+            mediaProjection = mpm.getMediaProjection(resultCode, data);
 
-        imageReader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2);
-        imageReader.setOnImageAvailableListener(reader -> {
-            Image image = null;
-            try {
-                image = reader.acquireLatestImage();
-                if (image == null) return;
+            // Android 14+ 必須先註冊 callback
+            mediaProjection.registerCallback(new MediaProjection.Callback() {
+                @Override
+                public void onStop() {
+                    stopSelf();
+                }
+            }, processHandler);
 
-                Image finalImage = image;
-                processHandler.post(() -> {
-                    try {
-                        if (yoloDetector != null) {
-                            Bitmap bitmap = ImageUtils.imageToBitmap(finalImage);
-                            if (bitmap != null) {
-                                List<android.graphics.Rect> boxes = yoloDetector.detect(bitmap, screenWidth, screenHeight);
-                                overlayView.post(() -> overlayView.updateBoxes(boxes));
-                                bitmap.recycle();
+            imageReader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2);
+            imageReader.setOnImageAvailableListener(reader -> {
+                Image image = null;
+                try {
+                    image = reader.acquireLatestImage();
+                    if (image == null) return;
+
+                    Image finalImage = image;
+                    processHandler.post(() -> {
+                        try {
+                            if (yoloDetector != null) {
+                                Bitmap bitmap = ImageUtils.imageToBitmap(finalImage);
+                                if (bitmap != null) {
+                                    List<android.graphics.Rect> boxes = yoloDetector.detect(bitmap, screenWidth, screenHeight);
+                                    overlayView.post(() -> overlayView.updateBoxes(boxes));
+                                    bitmap.recycle();
+                                }
+                            }
+                        } catch (Throwable ignored) {
+                        } finally {
+                            try {
+                                finalImage.close();
+                            } catch (Exception ignored) {
                             }
                         }
-                    } catch (Throwable ignored) {
-                    } finally {
-                        try {
-                            finalImage.close();
-                        } catch (Exception ignored) {
-                        }
+                    });
+                } catch (Throwable ignored) {
+                    if (image != null) {
+                        try { image.close(); } catch (Exception ignored2) {}
                     }
-                });
-            } catch (Throwable ignored) {
-                if (image != null) {
-                    try { image.close(); } catch (Exception ignored2) {}
                 }
-            }
-        }, processHandler);
+            }, processHandler);
 
-        virtualDisplay = mediaProjection.createVirtualDisplay(
-                "HumanDetection",
-                screenWidth, screenHeight, screenDensity,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                imageReader.getSurface(),
-                null, null);
+            virtualDisplay = mediaProjection.createVirtualDisplay(
+                    "HumanDetection",
+                    screenWidth, screenHeight, screenDensity,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    imageReader.getSurface(),
+                    null, null);
+        } catch (Throwable t) {
+            // 避免因 MediaProjection 問題直接閃退
+            stopSelf();
+        }
     }
 
     private void createNotificationChannel() {
@@ -148,11 +165,19 @@ public class OverlayService extends Service {
     }
 
     private Notification buildNotification() {
-        String status = (yoloDetector != null) ? "YOLO 已載入" : "未載入模型（請放入 yolov8n.tflite）";
+        String status = (yoloDetector != null) ? "YOLO 已載入" : "未載入模型";
+        Intent stopIntent = new Intent(this, OverlayService.class);
+        stopIntent.setAction("STOP");
+        android.app.PendingIntent stopPending = android.app.PendingIntent.getService(
+                this, 0, stopIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
+
         return new Notification.Builder(this, "overlay")
                 .setContentTitle("人像識別")
                 .setContentText(status)
                 .setSmallIcon(android.R.drawable.ic_menu_camera)
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "停止", stopPending)
+                .setOngoing(false)
                 .build();
     }
 
