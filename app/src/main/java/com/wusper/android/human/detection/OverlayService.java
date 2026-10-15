@@ -100,24 +100,35 @@ public class OverlayService extends Service {
 
         imageReader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2);
         imageReader.setOnImageAvailableListener(reader -> {
-            Image image = reader.acquireLatestImage();
-            if (image == null) return;
+            Image image = null;
+            try {
+                image = reader.acquireLatestImage();
+                if (image == null) return;
 
-            processHandler.post(() -> {
-                try {
-                    if (yoloDetector != null) {
-                        Bitmap bitmap = ImageUtils.imageToBitmap(image);
-                        if (bitmap != null) {
-                            List<android.graphics.Rect> boxes = yoloDetector.detect(bitmap, screenWidth, screenHeight);
-                            overlayView.post(() -> overlayView.updateBoxes(boxes));
-                            bitmap.recycle();
+                Image finalImage = image;
+                processHandler.post(() -> {
+                    try {
+                        if (yoloDetector != null) {
+                            Bitmap bitmap = ImageUtils.imageToBitmap(finalImage);
+                            if (bitmap != null) {
+                                List<android.graphics.Rect> boxes = yoloDetector.detect(bitmap, screenWidth, screenHeight);
+                                overlayView.post(() -> overlayView.updateBoxes(boxes));
+                                bitmap.recycle();
+                            }
+                        }
+                    } catch (Throwable ignored) {
+                    } finally {
+                        try {
+                            finalImage.close();
+                        } catch (Exception ignored) {
                         }
                     }
-                } catch (Exception ignored) {
-                } finally {
-                    image.close();
+                });
+            } catch (Throwable ignored) {
+                if (image != null) {
+                    try { image.close(); } catch (Exception ignored2) {}
                 }
-            });
+            }
         }, processHandler);
 
         virtualDisplay = mediaProjection.createVirtualDisplay(
@@ -137,9 +148,10 @@ public class OverlayService extends Service {
     }
 
     private Notification buildNotification() {
+        String status = (yoloDetector != null) ? "YOLO 已載入" : "未載入模型（請放入 yolov8n.tflite）";
         return new Notification.Builder(this, "overlay")
-                .setContentTitle("人像識別運行中")
-                .setContentText("實時畫框")
+                .setContentTitle("人像識別")
+                .setContentText(status)
                 .setSmallIcon(android.R.drawable.ic_menu_camera)
                 .build();
     }
