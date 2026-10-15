@@ -77,11 +77,16 @@ public class MainActivity extends Activity {
     }
 
     private void startOverlayService() {
-        Intent intent = new Intent(this, OverlayService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent);
-        } else {
-            startService(intent);
+        try {
+            Intent intent = new Intent(this, OverlayService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent);
+            } else {
+                startService(intent);
+            }
+            Toast.makeText(this, "服務已啟動，請看通知", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "啟動服務失敗: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 

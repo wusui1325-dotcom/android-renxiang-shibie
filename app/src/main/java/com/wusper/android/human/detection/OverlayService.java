@@ -40,46 +40,46 @@ public class OverlayService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        createNotificationChannel();
-        startForeground(1, buildNotification());
-
-        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        overlayView = new OverlayView(this);
-
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                        ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                        : WindowManager.LayoutParams.TYPE_PHONE,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-                PixelFormat.TRANSLUCENT);
-
-        params.gravity = Gravity.TOP | Gravity.START;
-        windowManager.addView(overlayView, params);
-
         try {
-            yoloDetector = new YoloDetector(this);
-        } catch (Exception e) {
-            yoloDetector = null;
+            createNotificationChannel();
+            startForeground(1, buildNotification());
+
+            windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+            overlayView = new OverlayView(this);
+
+            WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                    WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.MATCH_PARENT,
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                            ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                            : WindowManager.LayoutParams.TYPE_PHONE,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                            | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                            | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                    PixelFormat.TRANSLUCENT);
+
+            params.gravity = Gravity.TOP | Gravity.START;
+            windowManager.addView(overlayView, params);
+
+            try {
+                yoloDetector = new YoloDetector(this);
+            } catch (Throwable t) {
+                yoloDetector = null;
+            }
+
+            processThread = new android.os.HandlerThread("YoloProcess");
+            processThread.start();
+            processHandler = new android.os.Handler(processThread.getLooper());
+
+            DisplayMetrics metrics = new DisplayMetrics();
+            windowManager.getDefaultDisplay().getMetrics(metrics);
+            screenWidth = metrics.widthPixels;
+            screenHeight = metrics.heightPixels;
+            screenDensity = metrics.densityDpi;
+        } catch (Throwable t) {
+            // 盡量不讓服務在啟動時就死掉
+            stopSelf();
         }
-
-        // 沒有模型時不畫框，避免亂框
-        if (yoloDetector == null) {
-            // Optional: 可在 overlay 顯示提示文字
-        }
-
-        processThread = new android.os.HandlerThread("YoloProcess");
-        processThread.start();
-        processHandler = new android.os.Handler(processThread.getLooper());
-
-        DisplayMetrics metrics = new DisplayMetrics();
-        windowManager.getDefaultDisplay().getMetrics(metrics);
-        screenWidth = metrics.widthPixels;
-        screenHeight = metrics.heightPixels;
-        screenDensity = metrics.densityDpi;
     }
 
     @Override

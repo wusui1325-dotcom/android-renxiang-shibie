@@ -18,12 +18,18 @@
 2. 重新編譯。授權懸浮窗 + 畫面擷取後，才會用 YOLO 實時畫框。
 3. 若模型輸出格式與程式假設不同，框可能不準，需調整 `YoloDetector.parseYoloOutput`。
 
-## 穩定性更新（本次）
-- 關閉 GPU Delegate（部分裝置會閃退）
-- 動態讀取模型輸出 shape，避免硬編碼導致崩潰
-- Image → Bitmap 與推理全程 try-catch
-- 通知列會顯示「YOLO 已載入」或「未載入模型」
-- 沒有模型時不畫框、不閃退
+## 穩定性更新（閃退修復）
+- 改用 `foregroundServiceType="mediaProjection"` + 對應權限（Android 14+ 需要）
+- `onCreate` 全程 try-catch，避免啟動就死
+- MainActivity 啟動服務時顯示 Toast
+- 沒有模型或推理失敗時不畫框、不閃退
+
+## 測試步驟
+1. 先執行 `./download_model.sh`
+2. 編譯安裝
+3. 點「請求懸浮窗權限並啟動」
+4. 看通知是否出現「人像識別」
+5. 再點「請求畫面擷取權限」
 
 ## 模型自動下載
 執行 `./download_model.sh` 即可從 Ultralytics 官方 release 下載模型到 `app/src/main/assets/yolov8n.tflite`。
