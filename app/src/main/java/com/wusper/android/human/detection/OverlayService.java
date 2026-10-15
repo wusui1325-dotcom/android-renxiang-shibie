@@ -10,12 +10,12 @@ import android.os.Build;
 import android.os.IBinder;
 import android.view.Gravity;
 import android.view.WindowManager;
-import android.widget.FrameLayout;
 
 public class OverlayService extends Service {
 
     private WindowManager windowManager;
-    private FrameLayout overlayView;
+    private OverlayView overlayView;
+    private DetectionManager detectionManager;
 
     @Override
     public void onCreate() {
@@ -24,7 +24,7 @@ public class OverlayService extends Service {
         startForeground(1, buildNotification());
 
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        overlayView = new FrameLayout(this);
+        overlayView = new OverlayView(this);
 
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -40,7 +40,9 @@ public class OverlayService extends Service {
         params.gravity = Gravity.TOP | Gravity.START;
         windowManager.addView(overlayView, params);
 
-        // TODO: Start detection loop and draw boxes on overlayView
+        detectionManager = new DetectionManager();
+        detectionManager.setListener(overlayView::updateBoxes);
+        detectionManager.start();
     }
 
     private void createNotificationChannel() {
@@ -66,6 +68,9 @@ public class OverlayService extends Service {
 
     @Override
     public void onDestroy() {
+        if (detectionManager != null) {
+            detectionManager.stop();
+        }
         if (overlayView != null) {
             windowManager.removeView(overlayView);
         }

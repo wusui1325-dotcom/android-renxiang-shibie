@@ -7,8 +7,14 @@
 4. Overlay 僅繪製 Bounding Box，不處理觸控
 5. 使用 Foreground Service 保持運行
 
+## 目前進度
+- OverlayView 已支援動態更新 Bounding Boxes
+- DetectionManager 提供可替換的偵測迴圈（目前 stub，約 6-7 FPS）
+- OverlayService 已整合兩者，啟動後即可看到測試框
+
 ## 下一步
-- 實作畫面擷取（MediaProjection 或 Accessibility 輔助）
-- 整合偵測模型
-- 在 OverlayView 上 Canvas 繪製矩形
-- 優化功耗與延遲
+- 實作畫面擷取（MediaProjection API，需使用者授權）
+- 整合 ML Kit 或 TFLite person detection
+- 將偵測結果座標映射到 OverlayView
+- 加入開關與功耗監控
+- 處理螢幕旋轉與多視窗情況
