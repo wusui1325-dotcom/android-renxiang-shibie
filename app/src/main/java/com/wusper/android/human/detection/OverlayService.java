@@ -40,10 +40,15 @@ public class OverlayService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        // 先確保通知一定會出現
+        createNotificationChannel();
         try {
-            createNotificationChannel();
             startForeground(1, buildNotification());
+        } catch (Throwable t) {
+            // 即使失敗也繼續，避免完全沒通知
+        }
 
+        try {
             windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
             overlayView = new OverlayView(this);
 
@@ -67,6 +72,12 @@ public class OverlayService extends Service {
                 yoloDetector = null;
             }
 
+            // 更新通知顯示模型狀態
+            try {
+                NotificationManager nm = getSystemService(NotificationManager.class);
+                if (nm != null) nm.notify(1, buildNotification());
+            } catch (Throwable ignored) {}
+
             processThread = new android.os.HandlerThread("YoloProcess");
             processThread.start();
             processHandler = new android.os.Handler(processThread.getLooper());
@@ -77,8 +88,7 @@ public class OverlayService extends Service {
             screenHeight = metrics.heightPixels;
             screenDensity = metrics.densityDpi;
         } catch (Throwable t) {
-            // 盡量不讓服務在啟動時就死掉
-            stopSelf();
+            // 不在這裡 stopSelf，讓通知至少留著
         }
     }
 

@@ -87,7 +87,7 @@ public class MainActivity extends Activity {
             } else {
                 startService(intent);
             }
-            Toast.makeText(this, "服務已啟動，請看通知", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "服務已啟動，請下拉通知列查看", Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             Toast.makeText(this, "啟動服務失敗: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
