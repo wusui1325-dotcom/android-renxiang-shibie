@@ -25,7 +25,6 @@
 - 通知列會顯示「YOLO 已載入」或「未載入模型」
 - 沒有模型時不畫框、不閃退
 
-## 如何確認是否有在偵測
-1. 啟動服務後看通知：若顯示「未載入模型」，代表 `assets/yolov8n.tflite` 不存在或載入失敗。
-2. 有模型且通知顯示「YOLO 已載入」時，才會嘗試畫框。
-3. 若仍無框，多半是模型輸出格式與程式假設不同，需要再調整 parse 邏輯。
+## 模型自動下載
+執行 `./download_model.sh` 即可從 Ultralytics 官方 release 下載模型到 `app/src/main/assets/yolov8n.tflite`。
+GitHub Actions 也會自動下載。

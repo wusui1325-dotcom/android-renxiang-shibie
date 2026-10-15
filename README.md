@@ -15,9 +15,17 @@
 - Accessibility Service 輔助
 - 背景執行緒處理，避免阻塞 UI
 
-## 使用 YOLO
-將 `yolov8n.tflite` 放入 `app/src/main/assets/` 後即可啟用真實偵測。
-詳見 `IMPLEMENTATION.md`。
+## 使用 YOLO（自動下載）
+專案已內建下載腳本。編譯前執行一次即可：
+
+```bash
+chmod +x download_model.sh
+./download_model.sh
+```
+
+會從 Ultralytics 官方 release 下載 `yolo26n_w8a32.tflite` 並放到 `app/src/main/assets/yolov8n.tflite`。
+
+之後正常編譯安裝即可。通知顯示「YOLO 已載入」就代表模型成功。
 
 ## 注意事項
 - 需要使用者手動授權懸浮窗與無障礙權限
