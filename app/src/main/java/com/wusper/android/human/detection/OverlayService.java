@@ -1,13 +1,20 @@
 package com.wusper.android.human.detection;
 
-import android.app.Notification;
+import android.app.Activity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.graphics.PixelFormat;
+import android.hardware.display.DisplayManager;
+import android.hardware.display.VirtualDisplay;
+import android.media.Image;
+import android.media.ImageReader;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.IBinder;
+import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.WindowManager;
 
@@ -16,6 +23,13 @@ public class OverlayService extends Service {
     private WindowManager windowManager;
     private OverlayView overlayView;
     private DetectionManager detectionManager;
+
+    private MediaProjection mediaProjection;
+    private VirtualDisplay virtualDisplay;
+    private ImageReader imageReader;
+    private int screenWidth;
+    private int screenHeight;
+    private int screenDensity;
 
     @Override
     public void onCreate() {
@@ -43,6 +57,54 @@ public class OverlayService extends Service {
         detectionManager = new DetectionManager();
         detectionManager.setListener(overlayView::updateBoxes);
         detectionManager.start();
+
+        DisplayMetrics metrics = new DisplayMetrics();
+        windowManager.getDefaultDisplay().getMetrics(metrics);
+        screenWidth = metrics.widthPixels;
+        screenHeight = metrics.heightPixels;
+        screenDensity = metrics.densityDpi;
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && intent.hasExtra("media_projection_data")) {
+            int resultCode = intent.getIntExtra("media_projection_result_code", -1);
+            Intent data = intent.getParcelableExtra("media_projection_data");
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                startScreenCapture(resultCode, data);
+            }
+        }
+        return START_STICKY;
+    }
+
+    private void startScreenCapture(int resultCode, Intent data) {
+        MediaProjectionManager mpm = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+        mediaProjection = mpm.getMediaProjection(resultCode, data);
+
+        imageReader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2);
+        imageReader.setOnImageAvailableListener(reader -> {
+            Image image = null;
+            try {
+                image = reader.acquireLatestImage();
+                if (image != null) {
+                    // TODO: 將 image 傳給 DetectionManager 做真實偵測
+                    // 目前仍使用 stub；可在此轉 Bitmap 後呼叫 detectPersons(Bitmap)
+                    image.close();
+                }
+            } catch (Exception ignored) {
+            } finally {
+                if (image != null) {
+                    image.close();
+                }
+            }
+        }, null);
+
+        virtualDisplay = mediaProjection.createVirtualDisplay(
+                "HumanDetection",
+                screenWidth, screenHeight, screenDensity,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                imageReader.getSurface(),
+                null, null);
     }
 
     private void createNotificationChannel() {
@@ -62,14 +124,18 @@ public class OverlayService extends Service {
     }
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        return START_STICKY;
-    }
-
-    @Override
     public void onDestroy() {
         if (detectionManager != null) {
             detectionManager.stop();
+        }
+        if (virtualDisplay != null) {
+            virtualDisplay.release();
+        }
+        if (mediaProjection != null) {
+            mediaProjection.stop();
+        }
+        if (imageReader != null) {
+            imageReader.close();
         }
         if (overlayView != null) {
             windowManager.removeView(overlayView);

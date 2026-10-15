@@ -10,11 +10,14 @@
 ## 目前進度
 - OverlayView 已支援動態更新 Bounding Boxes
 - DetectionManager 提供可替換的偵測迴圈（目前 stub，約 6-7 FPS）
-- OverlayService 已整合兩者，啟動後即可看到測試框
+- OverlayService 已整合兩者
+- MainActivity 支援懸浮窗、無障礙、畫面擷取（MediaProjection）權限請求
+- OverlayService 可接收 MediaProjection 並建立 VirtualDisplay + ImageReader
+- ImageReader 回調已就緒，可在此接入真實偵測模型
 
 ## 下一步
-- 實作畫面擷取（MediaProjection API，需使用者授權）
-- 整合 ML Kit 或 TFLite person detection
-- 將偵測結果座標映射到 OverlayView
-- 加入開關與功耗監控
-- 處理螢幕旋轉與多視窗情況
+- 在 ImageReader 回調中將 Image 轉為 Bitmap 並送入 ML Kit / TFLite
+- 將模型輸出的座標映射到 OverlayView（注意密度與旋轉）
+- 加入開關控制偵測幀率與功耗
+- 處理螢幕旋轉、多視窗、權限回收情況
+- 優化 Image 處理避免記憶體洩漏
