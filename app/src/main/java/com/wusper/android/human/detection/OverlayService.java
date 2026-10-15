@@ -66,11 +66,9 @@ public class OverlayService extends Service {
             yoloDetector = null;
         }
 
-        // 僅在沒有 YOLO 時才用 stub 偵測
+        // 沒有模型時不畫框，避免亂框
         if (yoloDetector == null) {
-            detectionManager = new DetectionManager();
-            detectionManager.setListener(overlayView::updateBoxes);
-            detectionManager.start();
+            // Optional: 可在 overlay 顯示提示文字
         }
 
         processThread = new android.os.HandlerThread("YoloProcess");

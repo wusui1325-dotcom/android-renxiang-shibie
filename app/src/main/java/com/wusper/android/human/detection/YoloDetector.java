@@ -101,30 +101,39 @@ public class YoloDetector {
 
     private List<RectF> parseYoloOutput(float[][] output, int origW, int origH) {
         List<RectF> boxes = new ArrayList<>();
-        // Simplified parsing for common YOLOv8 format.
-        // output[class/coord][anchor]
-        // This needs to match your specific model export.
-        // For production, use proper YOLO post-processing (sigmoid, NMS, etc.).
+        // YOLOv8 TFLite 常見輸出: [84, 8400] 或 [8400, 84]
+        // 這裡假設 [84, N]：前 4 個是 cx,cy,w,h，後面是 class scores
+        // 若實際模型不同，需調整索引
+
+        int numFeatures = output.length;
         int numAnchors = output[0].length;
+
+        // 嘗試自動判斷方向
+        boolean transposed = numFeatures < numAnchors;
+        if (transposed) {
+            // 可能是 [N, 84]，暫時不處理，回傳空避免亂框
+            return boxes;
+        }
+
         for (int i = 0; i < numAnchors; i++) {
-            float conf = output[4][i]; // example confidence location
-            if (conf < CONF_THRESHOLD) continue;
-
-            // Assume person class score is high enough (filter class 0)
-            float classScore = output[5 + PERSON_CLASS][i];
-            if (classScore < CONF_THRESHOLD) continue;
-
             float cx = output[0][i];
             float cy = output[1][i];
             float w = output[2][i];
             float h = output[3][i];
 
-            float left = (cx - w / 2) * origW;
-            float top = (cy - h / 2) * origH;
-            float right = (cx + w / 2) * origW;
-            float bottom = (cy + h / 2) * origH;
+            // person class score (COCO class 0 通常在 index 4)
+            float personScore = output[4][i];
+            if (personScore < CONF_THRESHOLD) continue;
 
-            boxes.add(new RectF(left, top, right, bottom));
+            float left = (cx - w / 2f) * origW;
+            float top = (cy - h / 2f) * origH;
+            float right = (cx + w / 2f) * origW;
+            float bottom = (cy + h / 2f) * origH;
+
+            // 基本過濾
+            if (right > left && bottom > top && left >= 0 && top >= 0) {
+                boxes.add(new RectF(left, top, right, bottom));
+            }
         }
         return boxes;
     }

@@ -54,19 +54,10 @@ public class DetectionManager {
 
     /**
      * TODO: 替換為真實偵測。
-     * 可使用 MediaProjection 擷取畫面後送入 ML Kit，
-     * 或結合 AccessibilityService 取得視窗資訊輔助。
+     * 目前回傳空列表，避免亂框。
+     * 有模型時由 YoloDetector 負責。
      */
     private List<Rect> detectPersons() {
-        List<Rect> result = new ArrayList<>();
-        // Stub: 隨機產生 0-2 個框，方便測試畫框流程
-        int count = random.nextInt(3);
-        for (int i = 0; i < count; i++) {
-            int left = random.nextInt(800);
-            int top = random.nextInt(1200);
-            int size = 80 + random.nextInt(120);
-            result.add(new Rect(left, top, left + size, top + size));
-        }
-        return result;
+        return new ArrayList<>();
     }
 }
