@@ -5,7 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.graphics.RectF;
 
-import org.tensorflow.lite.Interpreter;
+import org.tensorflow.lite.gpu.GpuDelegate;
 import org.tensorflow.lite.support.common.FileUtil;
 
 import java.io.IOException;
@@ -37,8 +37,12 @@ public class YoloDetector {
     public YoloDetector(Context context) throws IOException {
         MappedByteBuffer model = FileUtil.loadMappedFile(context, MODEL_FILE);
         Interpreter.Options options = new Interpreter.Options();
-        options.setNumThreads(4);
-        // options.addDelegate(new GpuDelegate()); // enable for more speed if supported
+        options.setNumThreads(Math.max(2, Runtime.getRuntime().availableProcessors() / 2));
+        try {
+            options.addDelegate(new GpuDelegate());
+        } catch (Exception ignored) {
+            // GPU not available, fall back to CPU
+        }
         interpreter = new Interpreter(model, options);
 
         int[] inputShape = interpreter.getInputTensor(0).shape();

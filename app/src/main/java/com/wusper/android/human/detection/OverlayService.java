@@ -30,7 +30,10 @@ public class OverlayService extends Service {
     private ImageReader imageReader;
     private int screenWidth;
     private int screenHeight;
+    private int screenDensity;
     private YoloDetector yoloDetector;
+    private android.os.HandlerThread processThread;
+    private android.os.Handler processHandler;
 
     @Override
     public void onCreate() {
@@ -58,13 +61,19 @@ public class OverlayService extends Service {
         try {
             yoloDetector = new YoloDetector(this);
         } catch (Exception e) {
-            // Model not found or load failed; fall back to stub
             yoloDetector = null;
         }
 
-        detectionManager = new DetectionManager();
-        detectionManager.setListener(overlayView::updateBoxes);
-        detectionManager.start();
+        // 僅在沒有 YOLO 時才用 stub 偵測
+        if (yoloDetector == null) {
+            detectionManager = new DetectionManager();
+            detectionManager.setListener(overlayView::updateBoxes);
+            detectionManager.start();
+        }
+
+        processThread = new android.os.HandlerThread("YoloProcess");
+        processThread.start();
+        processHandler = new android.os.Handler(processThread.getLooper());
 
         DisplayMetrics metrics = new DisplayMetrics();
         windowManager.getDefaultDisplay().getMetrics(metrics);
@@ -91,24 +100,25 @@ public class OverlayService extends Service {
 
         imageReader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2);
         imageReader.setOnImageAvailableListener(reader -> {
-            Image image = null;
-            try {
-                image = reader.acquireLatestImage();
-                if (image != null && yoloDetector != null) {
-                    Bitmap bitmap = ImageUtils.imageToBitmap(image);
-                    if (bitmap != null) {
-                        List<android.graphics.Rect> boxes = yoloDetector.detect(bitmap, screenWidth, screenHeight);
-                        overlayView.updateBoxes(boxes);
-                        bitmap.recycle();
+            Image image = reader.acquireLatestImage();
+            if (image == null) return;
+
+            processHandler.post(() -> {
+                try {
+                    if (yoloDetector != null) {
+                        Bitmap bitmap = ImageUtils.imageToBitmap(image);
+                        if (bitmap != null) {
+                            List<android.graphics.Rect> boxes = yoloDetector.detect(bitmap, screenWidth, screenHeight);
+                            overlayView.post(() -> overlayView.updateBoxes(boxes));
+                            bitmap.recycle();
+                        }
                     }
-                }
-            } catch (Exception ignored) {
-            } finally {
-                if (image != null) {
+                } catch (Exception ignored) {
+                } finally {
                     image.close();
                 }
-            }
-        }, null);
+            });
+        }, processHandler);
 
         virtualDisplay = mediaProjection.createVirtualDisplay(
                 "HumanDetection",
@@ -138,6 +148,9 @@ public class OverlayService extends Service {
     public void onDestroy() {
         if (detectionManager != null) {
             detectionManager.stop();
+        }
+        if (processThread != null) {
+            processThread.quitSafely();
         }
         if (yoloDetector != null) {
             yoloDetector.close();
