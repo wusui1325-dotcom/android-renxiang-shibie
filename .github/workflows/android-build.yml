@@ -30,7 +30,6 @@ jobs:
         run: |
           yes | sdkmanager --licenses || true
           sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools"
-          sdkmanager --list_installed
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -42,14 +41,22 @@ jobs:
           if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
             gradle wrapper --gradle-version 8.2
           fi
-          ls -la gradle/wrapper/
 
       - name: Build debug APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace --no-daemon --info
+          ./gradlew assembleDebug --stacktrace --no-daemon
+        continue-on-error: false
+
+      - name: Show build failure details
+        if: failure()
+        run: |
+          echo "===== BUILD FAILED ====="
+          find . -name "*.log" -o -name "build.log" | head -5
+          echo "Check the Gradle output above for the actual error."
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: app-debug

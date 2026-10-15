@@ -15,6 +15,7 @@ import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.IBinder;
+import android.util.DisplayMetrics;
 import android.graphics.Bitmap;
 import java.util.List;
 import android.view.Gravity;
