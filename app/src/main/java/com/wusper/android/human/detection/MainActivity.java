@@ -41,8 +41,11 @@ public class MainActivity extends Activity {
         captureBtn.setOnClickListener(v -> requestScreenCapture());
 
         Button stopBtn = new Button(this);
-        stopBtn.setText("停止服務");
-        stopBtn.setOnClickListener(v -> stopService(new Intent(this, OverlayService.class)));
+        stopBtn.setText("強制停止服務");
+        stopBtn.setOnClickListener(v -> {
+            stopService(new Intent(this, OverlayService.class));
+            Toast.makeText(this, "已發送停止指令", Toast.LENGTH_SHORT).show();
+        });
 
         layout.addView(overlayBtn);
         layout.addView(accessBtn);

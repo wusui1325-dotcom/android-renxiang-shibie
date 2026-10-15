@@ -98,12 +98,14 @@ public class OverlayService extends Service {
         return START_STICKY;
     }
 
+    private long lastProcessTime = 0;
+    private static final long MIN_INTERVAL_MS = 250; // 最多約 4 FPS，降低卡頓
+
     private void startScreenCapture(int resultCode, Intent data) {
         try {
             MediaProjectionManager mpm = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
             mediaProjection = mpm.getMediaProjection(resultCode, data);
 
-            // Android 14+ 必須先註冊 callback
             mediaProjection.registerCallback(new MediaProjection.Callback() {
                 @Override
                 public void onStop() {
@@ -111,8 +113,20 @@ public class OverlayService extends Service {
                 }
             }, processHandler);
 
-            imageReader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2);
+            // 降低擷取解析度以減少負載
+            int captureW = Math.max(320, screenWidth / 2);
+            int captureH = Math.max(240, screenHeight / 2);
+
+            imageReader = ImageReader.newInstance(captureW, captureH, PixelFormat.RGBA_8888, 2);
             imageReader.setOnImageAvailableListener(reader -> {
+                long now = System.currentTimeMillis();
+                if (now - lastProcessTime < MIN_INTERVAL_MS) {
+                    Image skip = reader.acquireLatestImage();
+                    if (skip != null) skip.close();
+                    return;
+                }
+                lastProcessTime = now;
+
                 Image image = null;
                 try {
                     image = reader.acquireLatestImage();
@@ -146,12 +160,11 @@ public class OverlayService extends Service {
 
             virtualDisplay = mediaProjection.createVirtualDisplay(
                     "HumanDetection",
-                    screenWidth, screenHeight, screenDensity,
+                    captureW, captureH, screenDensity,
                     DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                     imageReader.getSurface(),
                     null, null);
         } catch (Throwable t) {
-            // 避免因 MediaProjection 問題直接閃退
             stopSelf();
         }
     }
@@ -159,17 +172,17 @@ public class OverlayService extends Service {
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    "overlay", "Overlay Service", NotificationManager.IMPORTANCE_LOW);
+                    "overlay", "Overlay Service", NotificationManager.IMPORTANCE_MIN);
             getSystemService(NotificationManager.class).createNotificationChannel(channel);
         }
     }
 
     private Notification buildNotification() {
-        String status = (yoloDetector != null) ? "YOLO 已載入" : "未載入模型";
+        String status = (yoloDetector != null) ? "YOLO 已載入（點停止結束）" : "未載入模型";
         Intent stopIntent = new Intent(this, OverlayService.class);
         stopIntent.setAction("STOP");
         android.app.PendingIntent stopPending = android.app.PendingIntent.getService(
-                this, 0, stopIntent,
+                this, 1, stopIntent,
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
 
         return new Notification.Builder(this, "overlay")
@@ -177,7 +190,9 @@ public class OverlayService extends Service {
                 .setContentText(status)
                 .setSmallIcon(android.R.drawable.ic_menu_camera)
                 .addAction(android.R.drawable.ic_menu_close_clear_cancel, "停止", stopPending)
+                .setContentIntent(stopPending)
                 .setOngoing(false)
+                .setAutoCancel(false)
                 .build();
     }
 
