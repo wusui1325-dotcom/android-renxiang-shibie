@@ -10,9 +10,14 @@
 
 ## 技術方向
 - Overlay Window 繪製 Bounding Boxes
-- ML Kit Object Detection 或 TFLite 輕量模型（person class）
-- 結合 Accessibility Service 取得螢幕內容或輔助定位
+- **YOLOv8n TFLite**（最快實用方案）進行 person 偵測
+- MediaProjection 畫面擷取
+- Accessibility Service 輔助
 - 背景執行緒處理，避免阻塞 UI
+
+## 使用 YOLO
+將 `yolov8n.tflite` 放入 `app/src/main/assets/` 後即可啟用真實偵測。
+詳見 `IMPLEMENTATION.md`。
 
 ## 注意事項
 - 需要使用者手動授權懸浮窗與無障礙權限

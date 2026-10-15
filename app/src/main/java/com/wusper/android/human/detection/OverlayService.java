@@ -14,7 +14,8 @@ import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.IBinder;
-import android.util.DisplayMetrics;
+import android.graphics.Bitmap;
+import java.util.List;
 import android.view.Gravity;
 import android.view.WindowManager;
 
@@ -29,7 +30,7 @@ public class OverlayService extends Service {
     private ImageReader imageReader;
     private int screenWidth;
     private int screenHeight;
-    private int screenDensity;
+    private YoloDetector yoloDetector;
 
     @Override
     public void onCreate() {
@@ -53,6 +54,13 @@ public class OverlayService extends Service {
 
         params.gravity = Gravity.TOP | Gravity.START;
         windowManager.addView(overlayView, params);
+
+        try {
+            yoloDetector = new YoloDetector(this);
+        } catch (Exception e) {
+            // Model not found or load failed; fall back to stub
+            yoloDetector = null;
+        }
 
         detectionManager = new DetectionManager();
         detectionManager.setListener(overlayView::updateBoxes);
@@ -86,10 +94,13 @@ public class OverlayService extends Service {
             Image image = null;
             try {
                 image = reader.acquireLatestImage();
-                if (image != null) {
-                    // TODO: 將 image 傳給 DetectionManager 做真實偵測
-                    // 目前仍使用 stub；可在此轉 Bitmap 後呼叫 detectPersons(Bitmap)
-                    image.close();
+                if (image != null && yoloDetector != null) {
+                    Bitmap bitmap = ImageUtils.imageToBitmap(image);
+                    if (bitmap != null) {
+                        List<android.graphics.Rect> boxes = yoloDetector.detect(bitmap, screenWidth, screenHeight);
+                        overlayView.updateBoxes(boxes);
+                        bitmap.recycle();
+                    }
                 }
             } catch (Exception ignored) {
             } finally {
@@ -127,6 +138,9 @@ public class OverlayService extends Service {
     public void onDestroy() {
         if (detectionManager != null) {
             detectionManager.stop();
+        }
+        if (yoloDetector != null) {
+            yoloDetector.close();
         }
         if (virtualDisplay != null) {
             virtualDisplay.release();

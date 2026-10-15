@@ -27,6 +27,8 @@ android {
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    // TODO: Add ML Kit or TFLite for person detection
-    // implementation 'com.google.mlkit:object-detection:17.0.0'
+    // TensorFlow Lite for YOLO inference
+    implementation 'org.tensorflow:tensorflow-lite:2.16.1'
+    implementation 'org.tensorflow:tensorflow-lite-support:0.4.4'
+    implementation 'org.tensorflow:tensorflow-lite-gpu:2.16.1' // optional GPU delegate for speed
 }
