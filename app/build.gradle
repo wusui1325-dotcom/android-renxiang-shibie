@@ -1,0 +1,32 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.wusper.android.human.detection'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.wusper.android.human.detection"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "0.1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    // TODO: Add ML Kit or TFLite for person detection
+    // implementation 'com.google.mlkit:object-detection:17.0.0'
+}

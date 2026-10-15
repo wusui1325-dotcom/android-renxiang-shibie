@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">人像識別</string>
+    <string name="accessibility_description">用於輔助實時人型偵測與畫框</string>
+</resources>
